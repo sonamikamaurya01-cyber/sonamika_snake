@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snake Game Deluxe</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f172a;--panel:#1e293b;--text:#f8fafc;--muted:#94a3b8;--accent:#22c55e;--danger:#ef4444;--gold:#f59e0b}
+body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;padding:18px}
+button,select{font:inherit}
+.app{width:100%;max-width:900px}
+header{text-align:center;margin-bottom:14px}
+h1{font-size:40px;color:var(--accent)}
+.subtitle{color:var(--muted);margin-top:5px}
+.layout{display:grid;grid-template-columns:minmax(0,520px) 260px;gap:16px;align-items:start}
+.game-panel,.side{background:var(--panel);border:1px solid #334155;border-radius:16px;padding:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:#0f172a;border-radius:10px;padding:8px;text-align:center}
+.stat span{display:block;color:var(--muted);font-size:11px}.stat b{font-size:20px;color:var(--accent)}
+.board{position:relative}
+canvas{width:100%;display:block;background:#07111f;border:4px solid var(--accent);border-radius:12px;touch-action:none}
+.overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#07111fee;border-radius:12px;text-align:center}
+.card{width:82%;background:var(--panel);padding:24px;border-radius:16px;border:1px solid #475569}
+.card h2{color:var(--danger);margin-bottom:8px}.card p{color:var(--muted);margin-bottom:15px}
+button{border:0;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:bold}
+.primary{background:var(--accent);color:#052e16}.secondary{background:#334155;color:white}.gold{background:var(--gold);color:#111827}
+.actions{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.controls{width:185px;margin:15px auto 0;display:grid;grid-template-columns:repeat(3,55px);gap:6px;justify-content:center}
+.control{width:55px;height:55px;padding:0;background:#334155;color:white;font-size:21px}.control:hover{background:var(--accent);color:#052e16}
+.up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}
+.side h2{font-size:18px;margin-bottom:10px;color:var(--accent)}
+.section{border-bottom:1px solid #334155;padding-bottom:14px;margin-bottom:14px}
+.section:last-child{border:0;margin:0;padding:0}
+label{display:block;color:var(--muted);font-size:13px;margin:8px 0 5px}
+select{width:100%;background:#0f172a;color:white;border:1px solid #475569;border-radius:8px;padding:9px}
+.list{list-style:none;color:#cbd5e1;font-size:13px;line-height:1.9}
+.toggle{width:100%;margin-top:7px}
+.help{color:var(--muted);font-size:12px;line-height:1.7;text-align:center;margin-top:12px}
+.badge{display:inline-block;padding:4px 8px;border-radius:99px;background:#0f172a;color:#fbbf24;font-size:12px;margin:3px}
+#mission{color:#cbd5e1;font-size:13px;line-height:1.5}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr;gap:14px}.section{margin:0}.side .section:last-child{grid-column:1/-1}}
+@media(max-width:520px){body{padding:8px}h1{font-size:32px}.stats{grid-template-columns:repeat(2,1fr)}.side{display:block}.section{margin-bottom:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1>🐍 Snake Game Deluxe</h1><p class="subtitle">Eat • Grow • Power Up • Beat your best score</p></header>
+
+<div class="layout">
+<main class="game-panel">
+<div class="stats">
+<div class="stat"><span>SCORE</span><b id="score">0</b></div>
+<div class="stat"><span>BEST</span><b id="best">0</b></div>
+<div class="stat"><span>LEVEL</span><b id="level">1</b></div>
+<div class="stat"><span>LIVES</span><b id="lives">❤️❤️❤️</b></div>
+</div>
+
+<div class="board">
+<canvas id="canvas" width="500" height="500"></canvas>
+<div class="overlay" id="overlay">
+<div class="card">
+<h2 id="gameTitle">🐍 Snake</h2>
+<p id="gameMessage">Ready to play?</p>
+<button class="primary" id="overlayBtn">▶ Start Game</button>
+</div>
+</div>
+</div>
+
+<div class="actions">
+<button class="primary" id="pauseBtn">⏸ Pause</button>
+<button class="secondary" onclick="newGame()">🔄 New Game</button>
+</div>
+
+<div class="controls">
+<button class="control up" onclick="setDirection('up')">▲</button>
+<button class="control left" onclick="setDirection('left')">◀</button>
+<button class="control down" onclick="setDirection('down')">▼</button>
+<button class="control right" onclick="setDirection('right')">▶</button>
+</div>
+<p class="help">Arrow Keys / WASD to move • Space to pause • Eat 🍎 • Collect ⭐ bonuses</p>
+</main>
+
+<aside class="side">
+<div class="section">
+<h2>⚙️ Settings</h2>
+<label>Difficulty</label>
+<select id="difficulty">
+<option value="easy">Easy</option>
+<option value="normal" selected>Normal</option>
+<option value="hard">Hard</option>
+<option value="extreme">Extreme</option>
+</select>
+<label>Theme</label>
+<select id="theme">
+<option value="green">Green</option><option value="blue">Blue</option><option value="purple">Purple</option><option value="red">Red</option>
+</select>
+<button class="secondary toggle" onclick="toggleSound()" id="soundBtn">🔊 Sound On</button>
+</div>
+
+<div class="section">
+<h2>🎯 Mission</h2>
+<p id="mission">Eat 10 apples to complete today's mission.</p>
+<div id="missionProgress" class="badge">0 / 10</div>
+</div>
+
+<div class="section">
+<h2>🍓 Fruits & Scores</h2>
+<ul class="list">
+<li>🍎 Apple: <b>+1</b></li>
+<li>🍌 Banana: <b>+2</b></li>
+<li>🍊 Orange: <b>+3</b></li>
+<li>🍇 Grapes: <b>+4</b></li>
+<li>🍉 Watermelon: <b>+5</b></li>
+<li>🍍 Pineapple: <b>+6</b></li>
+<li>🍓 Strawberry: <b>+7</b></li>
+<li>💣 Bomb: <b>-1 life</b></li>
+</ul>
+</div>
+<div class="section">
+<h2>⭐ Power-ups</h2>
+<ul class="list">
+<li>⭐ Bonus: +5 points</li>
+<li>⚡ Speed: faster movement</li>
+<li>🛡️ Shield: survive one crash</li>
+<li>🧲 Magnet: pulls fruit closer</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>📊 Statistics</h2>
+<ul class="list">
+<li>Games: <span id="games">0</span></li>
+<li>Apples: <span id="apples">0</span></li>
+<li>Power-ups: <span id="powers">0</span></li>
+<li>Best Level: <span id="bestLevel">1</span></li>
+</ul>
+</div>
+
+<div class="section">
+<h2>🏆 Achievements</h2>
+<div id="achievements"><span class="badge">First Game</span></div>
+</div>
+</aside>
+</div>
+</div>
+
+<script>
+const c=document.getElementById("canvas"),ctx=c.getContext("2d"),N=25,CELL=c.width/N;
+let snake=[],food=[],dir="right",nextDir="right",score=0,level=1,lives=3,paused=false,running=false,timer;
+let difficulty="normal",sound=true,shield=false,magnet=false,stats=JSON.parse(localStorage.getItem("snakeStats")||'{"games":0,"apples":0,"powers":0,"bestLevel":1}');
+let best=Number(localStorage.getItem("snakeBest")||0),mission=Number(localStorage.getItem("snakeMission")||0);
+const palettes={green:"#22c55e",blue:"#38bdf8",purple:"#a78bfa",red:"#f87171"};
+const $=id=>document.getElementById(id);
+$("best").textContent=best; updateStats(); updateMission();
+
+function beep(freq=500,duration=.05){if(!sound)return;try{let a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;o.connect(g);g.connect(a.destination);g.gain.value=.03;o.start();o.stop(a.currentTime+duration)}catch(e){}}
+function toggleSound(){sound=!sound;$("soundBtn").textContent=sound?"🔊 Sound On":"🔇 Sound Off"}
+function speed(){let base={easy:150,normal:120,hard:95,extreme:70}[difficulty];return Math.max(38,base-(level-1)*5)}
+function newGame(){
+clearInterval(timer);snake=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];dir=nextDir="right";score=0;level=1;lives=3;shield=false;magnet=false;paused=false;running=true;
+stats.games++;saveStats();$("overlay").style.display="none";$("pauseBtn").textContent="⏸ Pause";food=[];spawnFood("apple");spawnPower();startLoop();draw();
+}
+function startLoop(){clearInterval(timer);timer=setInterval(update,speed())}
+function spawnFood(type="apple"){
+let p;do{p={x:Math.floor(Math.random()*N),y:Math.floor(Math.random()*N),type}}while(snake.some(s=>s.x===p.x&&s.y===p.y));
+food.push(p);
+}
+function spawnFruit(){
+const fruits=[
+  {type:"apple",emoji:"🍎",points:1},
+  {type:"banana",emoji:"🍌",points:2},
+  {type:"orange",emoji:"🍊",points:3},
+  {type:"grapes",emoji:"🍇",points:4},
+  {type:"watermelon",emoji:"🍉",points:5},
+  {type:"pineapple",emoji:"🍍",points:6},
+  {type:"strawberry",emoji:"🍓",points:7}
+];
+const f=fruits[Math.floor(Math.random()*fruits.length)];
+spawnFood(f.type);
+}
+function spawnBomb(){
+if(Math.random()<0.25) spawnFood("bomb");
+}
+function spawnPower(){
+if(Math.random()<.35){
+let types=["bonus","speed","shield","magnet"],type=types[Math.floor(Math.random()*types.length)];
+spawnFood(type)
+}
+spawnBomb();
+}
+function setDirection(d){
+if((d==="up"&&dir!=="down")||(d==="down"&&dir!=="up")||(d==="left"&&dir!=="right")||(d==="right"&&dir!=="left"))nextDir=d;
+}
+function update(){
+if(!running||paused)return;dir=nextDir;let h={...snake[0]};
+if(dir==="up")h.y--;if(dir==="down")h.y++;if(dir==="left")h.x--;if(dir==="right")h.x++;
+let hit=h.x<0||h.x>=N||h.y<0||h.y>=N||snake.some(s=>s.x===h.x&&s.y===h.y);
+if(hit){if(shield){shield=false;beep(300);h.x=Math.max(0,Math.min(N-1,h.x));h.y=Math.max(0,Math.min(N-1,h.y))}else{lives--;updateUI();beep(120,.15);if(lives<=0){gameOver();return}snake=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];dir=nextDir="right";return}}
+snake.unshift(h);
+let eaten=food.findIndex(f=>f.x===h.x&&f.y===h.y);
+if(eaten>=0){
+let f=food[eaten];food.splice(eaten,1);
+const fruitPoints={
+  apple:1, banana:2, orange:3, grapes:4,
+  watermelon:5, pineapple:6, strawberry:7
+};
+if(fruitPoints[f.type]){
+  score+=fruitPoints[f.type];
+  stats.apples++;
+  mission=Math.min(10,mission+1);
+  localStorage.setItem("snakeMission",mission);
+  beep(600+fruitPoints[f.type]*70);
+  level=Math.floor(score/5)+1;
+}
+if(f.type==="bomb"){
+  lives--;
+  shield=false;
+  beep(90,.25);
+  updateUI();
+  if(lives<=0){gameOver();return}
+  snake=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];
+  dir=nextDir="right";
+  startLoop();
+  draw();
+  return;
+}
+if(f.type==="bonus"){score+=5;beep(900);stats.powers++}
+if(f.type==="speed"){score+=2;beep(1000);stats.powers++;level++}
+if(f.type==="shield"){shield=true;beep(600);stats.powers++}
+if(f.type==="magnet"){magnet=true;beep(800);stats.powers++}
+if(score>best){best=score;localStorage.setItem("snakeBest",best)}
+stats.bestLevel=Math.max(stats.bestLevel,level);
+saveStats();
+updateUI();
+spawnFruit();
+if(Math.random()<.45)spawnPower()
+}else snake.pop();
+if(magnet&&food.length){food.forEach(f=>{if(f.type==="apple"){if(f.x<h.x)f.x++;else if(f.x>h.x)f.x--;if(f.y<h.y)f.y++;else if(f.y>h.y)f.y--}})}
+startLoop();draw();
+}
+function draw(){
+ctx.fillStyle="#07111f";ctx.fillRect(0,0,c.width,c.height);
+ctx.strokeStyle="#102238";for(let i=0;i<=c.width;i+=CELL){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,c.height);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(c.width,i);ctx.stroke()}
+food.forEach(f=>{let x=f.x*CELL+CELL/2,y=f.y*CELL+CELL/2;ctx.font="18px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText({
+apple:"🍎",banana:"🍌",orange:"🍊",grapes:"🍇",
+watermelon:"🍉",pineapple:"🍍",strawberry:"🍓",
+bomb:"💣",bonus:"⭐",speed:"⚡",shield:"🛡️",magnet:"🧲"
+}[f.type],x,y)});
+snake.forEach((s,i)=>{ctx.fillStyle=i===0?palettes[$("theme").value]:"#16a34a";ctx.fillRect(s.x*CELL+1,s.y*CELL+1,CELL-2,CELL-2)});
+if(shield){ctx.strokeStyle="#38bdf8";ctx.lineWidth=3;ctx.strokeRect(snake[0].x*CELL+2,snake[0].y*CELL+2,CELL-4,CELL-4)}
+}
+function gameOver(){
+running=false;clearInterval(timer);$("gameTitle").textContent="💀 Game Over";$("gameMessage").textContent=`Score: ${score} • Level: ${level}`;$("overlayBtn").textContent="🔄 Play Again";$("overlay").style.display="flex";beep(100,.25)
+}
+function updateUI(){$("score").textContent=score;$("best").textContent=best;$("level").textContent=level;$("lives").textContent="❤️".repeat(lives)+"🖤".repeat(3-lives);updateMission()}
+function updateMission(){$("missionProgress").textContent=`${mission} / 10`;$("mission").textContent=mission>=10?"🎉 Mission complete! Eat 10 apples to complete today's mission.":`Eat ${10-mission} more apple${10-mission===1?"":"s"} to complete today's mission.`}
+function saveStats(){localStorage.setItem("snakeStats",JSON.stringify(stats));updateStats()}
+function updateStats(){$("games").textContent=stats.games;$("apples").textContent=stats.apples;$("powers").textContent=stats.powers;$("bestLevel").textContent=stats.bestLevel}
+$("pauseBtn").onclick=()=>{if(!running)return;paused=!paused;$("pauseBtn").textContent=paused?"▶ Resume":"⏸ Pause"}
+$("overlayBtn").onclick=newGame;
+$("difficulty").onchange=e=>{difficulty=e.target.value;if(running)startLoop()}
+$("theme").onchange=draw;
+document.addEventListener("keydown",e=>{
+let k=e.key.toLowerCase();
+if(k==="arrowup"||k==="w")setDirection("up");if(k==="arrowdown"||k==="s")setDirection("down");if(k==="arrowleft"||k==="a")setDirection("left");if(k==="arrowright"||k==="d")setDirection("right");
+if(e.code==="Space"){e.preventDefault();$("pauseBtn").click()}
+});
+$("overlay").style.display="flex";draw();
+</script>
+</body>
+</html>
